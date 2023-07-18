@@ -2,33 +2,36 @@ import pygame
 import os
 import copy
 
+
 class Chessboard:
     def fen_to_current_position(self, fen):
         self.current_position = [[None] * 8 for _ in range(8)]
         fen_parts = fen.split(" ")
 
         # Process the piece positions part of the FEN string
-        fen_pieces = reversed(fen_parts[0])
-        rank_index = 7
+        fen_pieces = fen_parts[0]
+        rank_index = 0
         file_index = 0
 
         for char in fen_pieces:
-            if char == '/':
-                rank_index -= 1
+            if char == "/":
+                rank_index += 1
                 file_index = 0
             elif char.isdigit():
                 file_index += int(char)
             else:
-                self.current_position[rank_index][file_index] = Piece("b" if char.islower() else "w", char.lower(), rank_index, file_index)
+                self.current_position[rank_index][file_index] = Piece(
+                    "b" if char.islower() else "w", char.lower(), rank_index, file_index
+                )
                 file_index += 1
-        
 
     def __init__(self):
         # Initialize Pygame
         pygame.init()
 
         # Define the colors
-        self.BLACK = (100, 100, 150)
+        self.BLACK = (0, 0, 0)
+        self.BLUE = (100, 100, 150)
         self.WHITE = (255, 255, 255)
         self.GREY = (128, 128, 128)
         self.RED = (150, 100, 100)
@@ -41,7 +44,7 @@ class Chessboard:
         self.about_to_promote = False
 
         # Hands
-        self.bughouse_hand_amounts = [[1, 0, 0, 0, 0],[0, 1, 1, 0, 0]]
+        self.bughouse_hand_amounts = [[1, 0, 0, 0, 0], [0, 1, 1, 0, 0]]
         self.bughouse_hand_names = ["q", "r", "n", "b", "p"]
 
         # Set the size of each square on the chessboard
@@ -60,7 +63,7 @@ class Chessboard:
 
         # Path to the directory containing the PNG images
         directory = "icons"
-        
+
         # Get a list of files in the directory
         files = os.listdir(directory)
 
@@ -87,6 +90,9 @@ class Chessboard:
         """
         update board to match position
         """
+        pygame.draw.rect(
+            self.screen, self.BLACK, (0, 0, self.board_width, self.board_height)
+        )
         for row in [0, 11]:
             for column in range(1, 7):
                 x = column * self.square_size
@@ -96,39 +102,44 @@ class Chessboard:
                 if (row + column) % 2 == 0:
                     color = self.WHITE
                 else:
-                    color = self.BLACK
-         
+                    color = self.BLUE
+
                 # Draw the square
-                pygame.draw.rect(self.screen, color, (x, y, self.square_size, self.square_size))
+                pygame.draw.rect(
+                    self.screen, color, (x, y, self.square_size, self.square_size)
+                )
 
                 if column == 6:
                     piece_image = self.piece_images["resign"]
                 else:
-
                     piece_name = self.bughouse_hand_names[column - 1]
-                    
+
                     if row == 11:
                         piece_image = self.piece_images["w" + piece_name]
                         piece_amount = self.bughouse_hand_amounts[1][column - 1]
-                
+
                     else:
                         piece_image = self.piece_images["b" + piece_name]
                         piece_amount = self.bughouse_hand_amounts[0][column - 1]
 
-                
                 self.screen.blit(piece_image, (x, y))
                 if column == 6:
                     pass
                 else:
                     text = self.font.render(str(piece_amount), True, (255, 0, 0))
-                    text_rect = text.get_rect(center=(x + self.square_size * 3 // 4, y + self.square_size * 3 // 4))
+                    text_rect = text.get_rect(
+                        center=(
+                            x + self.square_size * 3 // 4,
+                            y + self.square_size * 3 // 4,
+                        )
+                    )
                     self.screen.blit(text, text_rect)
 
         # Loop to draw the chessboard and pieces
         for row in range(8):
             for column in range(8):
                 x = column * self.square_size
-                y = (row + 2) * self.square_size # offset for bughouse hand
+                y = (row + 2) * self.square_size  # offset for bughouse hand
 
                 # Toggle the square color
                 if (row, column) in self.previous_move:
@@ -136,10 +147,12 @@ class Chessboard:
                 elif (row + column) % 2 == 0:
                     color = self.WHITE
                 else:
-                    color = self.BLACK
+                    color = self.BLUE
 
                 # Draw the square
-                pygame.draw.rect(self.screen, color, (x, y, self.square_size, self.square_size))
+                pygame.draw.rect(
+                    self.screen, color, (x, y, self.square_size, self.square_size)
+                )
 
                 # Get the piece name at the current position
                 piece = self.current_position[row][column]
@@ -150,21 +163,26 @@ class Chessboard:
                     self.screen.blit(piece_image, (x, y))
 
     def draw_promotion_menu(self):
-
-        #draw the menu
+        # draw the menu
         if self.turn == "w":
             y = self.square_size
         else:
             y = 10 * self.square_size
         for column in range(2, 6):
             x = column * self.square_size
-            pygame.draw.rect(self.screen, self.WHITE, (x, y, self.square_size, self.square_size))
-            pygame.draw.rect(self.screen, self.GREY, (x, y, self.square_size, self.square_size), width=4)
+            pygame.draw.rect(
+                self.screen, self.WHITE, (x, y, self.square_size, self.square_size)
+            )
+            pygame.draw.rect(
+                self.screen,
+                self.GREY,
+                (x, y, self.square_size, self.square_size),
+                width=4,
+            )
             piece_name = self.bughouse_hand_names[column - 2]
-            piece_image = self.piece_images["w" + piece_name]
+            piece_image = self.piece_images[self.turn + piece_name]
             self.screen.blit(piece_image, (x, y))
         pygame.display.flip()
-
 
     def display_legal_moves(self, moves):
         # Loop to display the legal moves as grey circles on the chessboard
@@ -172,26 +190,32 @@ class Chessboard:
             row, column = move
             x = column * self.square_size + self.square_size // 2
             y = (row + 2) * self.square_size + self.square_size // 2
-            if self.current_position[row][column] is not None: #if capturing
+            if self.current_position[row][column] is not None:  # if capturing
                 pygame.draw.circle(self.screen, self.GREY, (x, y), radius=20, width=4)
             else:
                 pygame.draw.circle(self.screen, self.GREY, (x, y), radius=12)
 
-    def make_move(self, target_location, en_passant = False, promotion = False):
+    def make_move(self, target_location, en_passant=False, promotion=False):
         """
-        make the move. 
+        make the move.
         change the previous move.
         change the turn
         """
-        
+
         target_row, target_column = target_location
         original_row, original_column = self.selected_piece.location
-        self.previous_move = [self.selected_piece.piece_name, (original_row, original_column), (target_row, target_column)]
+        self.previous_move = [
+            self.selected_piece.piece_name,
+            (original_row, original_column),
+            (target_row, target_column),
+        ]
         self.current_position[original_row][original_column] = None
 
         if promotion:
-            #TODO!!!
-            self.current_position[target_row][target_column] = self.selected_piece
+            # TODO!!!
+            self.current_position[target_row][target_column] = Piece(
+                self.turn, promotion, target_row, target_column
+            )
             self.selected_piece.location = (target_row, target_column)
             self.selected_piece.has_moved = True
         else:
@@ -200,7 +224,7 @@ class Chessboard:
             self.selected_piece.has_moved = True
 
         if en_passant:
-            self.current_position[original_row][target_column] =  None
+            self.current_position[original_row][target_column] = None
 
         self.turn = "w" if self.turn == "b" else "b"
         self.selected_piece = None
@@ -226,82 +250,128 @@ class Chessboard:
                         self.draw_chessboard()
 
                         # Promotion
-                        menu_row, promotion_row = (0, 0) if self.turn == "w" else (10, 7)
-                        
+                        menu_row, promotion_row = (
+                            (1, 0) if self.turn == "w" else (10, 7)
+                        )
+
                         if self.about_to_promote:
-                            if row == menu_row\
-                            and 2 <= column <= 5:
-                                print(self.bughouse_hand_names[column - 2])
+                            if row == menu_row and 2 <= column <= 5:
+                                # use previous row/column and promote
+                                self.make_move(
+                                    (chessboard_row, chessboard_column),
+                                    promotion=self.bughouse_hand_names[column - 2],
+                                )
+                                self.draw_chessboard()
                                 self.about_to_promote = False
 
                         # If move is normal
                         elif 2 <= row <= 9:
-
                             # Get the piece object at the clicked position
                             chessboard_row = row - 2
                             chessboard_column = column
-                            piece = self.current_position[chessboard_row][chessboard_column] # bughouse offset
+                            piece = self.current_position[chessboard_row][
+                                chessboard_column
+                            ]  # bughouse offset
 
                             # Check if a piece is clicked
                             if piece:
-
                                 # Select own piece
                                 if piece.color == self.turn:
-                                    legal_moves = piece.show_legal_moves(self.current_position, self.previous_move, strict=True)
+                                    legal_moves = piece.show_legal_moves(
+                                        self.current_position,
+                                        self.previous_move,
+                                        strict=True,
+                                    )
                                     self.display_legal_moves(legal_moves)
-                                    print(f"selected piece {piece.piece_name} at {piece.location} with legal moves {legal_moves}")
+                                    print(
+                                        f"selected piece {piece.piece_name} at {piece.location} with legal moves {legal_moves}"
+                                    )
 
                                     # select piece
                                     self.selected_piece = piece
-                                
+
                                 # Capture enemy piece
                                 elif self.selected_piece is not None:
-                                    if (chessboard_row, chessboard_column) in legal_moves:
-
-                                        if self.selected_piece.piece_name == "p"\
-                                        and chessboard_row == promotion_row:
-                                            print(f"promotion. {self.selected_piece.piece_name} at {self.selected_piece.location} captures {piece.piece_name} on {piece.location} and promotes.")
+                                    if (
+                                        chessboard_row,
+                                        chessboard_column,
+                                    ) in legal_moves:
+                                        if (
+                                            self.selected_piece.piece_name == "p"
+                                            and chessboard_row == promotion_row
+                                        ):
+                                            print(
+                                                f"promotion. {self.selected_piece.piece_name} at {self.selected_piece.location} captures {piece.piece_name} on {piece.location} and promotes."
+                                            )
                                             self.draw_promotion_menu()
                                             self.about_to_promote = True
 
                                         else:
-                                            print(f"play move. {self.selected_piece.piece_name} at {self.selected_piece.location} captures {piece.piece_name} on {piece.location}.")
+                                            print(
+                                                f"play move. {self.selected_piece.piece_name} at {self.selected_piece.location} captures {piece.piece_name} on {piece.location}."
+                                            )
 
                                             # Play the move on the board
-                                            self.make_move((chessboard_row, chessboard_column))
+                                            self.make_move(
+                                                (chessboard_row, chessboard_column)
+                                            )
                                             self.draw_chessboard()
-                            
+
                             # Move own piece
                             elif self.selected_piece is not None:
                                 if (chessboard_row, chessboard_column) in legal_moves:
-                                    
                                     # En passant
-                                    if self.selected_piece.piece_name == "p"\
-                                    and chessboard_row != self.selected_piece.location[0]\
-                                    and chessboard_column != self.selected_piece.location[1]:
-                                        print(f"en passant. {self.selected_piece.piece_name} at {self.selected_piece.location} moves to {(chessboard_row, chessboard_column)}.")
-                                        self.make_move((chessboard_row, chessboard_column), en_passant = True)
+                                    if (
+                                        self.selected_piece.piece_name == "p"
+                                        and chessboard_row
+                                        != self.selected_piece.location[0]
+                                        and chessboard_column
+                                        != self.selected_piece.location[1]
+                                    ):
+                                        print(
+                                            f"en passant. {self.selected_piece.piece_name} at {self.selected_piece.location} moves to {(chessboard_row, chessboard_column)}."
+                                        )
+                                        self.make_move(
+                                            (chessboard_row, chessboard_column),
+                                            en_passant=True,
+                                        )
                                         self.draw_chessboard()
 
-                                    elif self.selected_piece.piece_name == "p"\
-                                    and chessboard_row == promotion_row:
-                                        print(f"promotion. {self.selected_piece.piece_name} at {self.selected_piece.location} promotes.")
+                                    elif (
+                                        self.selected_piece.piece_name == "p"
+                                        and chessboard_row == promotion_row
+                                    ):
+                                        print(
+                                            f"promotion. {self.selected_piece.piece_name} at {self.selected_piece.location} promotes."
+                                        )
                                         self.draw_promotion_menu()
                                         self.about_to_promote = True
-                                            
+
                                     else:
-                                        print(f"play move. {self.selected_piece.piece_name} at {self.selected_piece.location} moves to {(chessboard_row, chessboard_column)}.")
-                                        
+                                        print(
+                                            f"play move. {self.selected_piece.piece_name} at {self.selected_piece.location} moves to {(chessboard_row, chessboard_column)}."
+                                        )
+
                                         # Play the move on the board
-                                        self.make_move((chessboard_row, chessboard_column))
-                                        self.draw_chessboard() 
+                                        self.make_move(
+                                            (chessboard_row, chessboard_column)
+                                        )
+                                        self.draw_chessboard()
+                                else:
+                                    self.selected_piece = None
 
                         # Bughouse logic TODO
                         elif 1 <= column <= 5:
                             if self.turn == "w" and row == 11:
-                                print(self.bughouse_hand_names[column - 1], self.bughouse_hand_amounts[1][column - 1])
+                                print(
+                                    self.bughouse_hand_names[column - 1],
+                                    self.bughouse_hand_amounts[1][column - 1],
+                                )
                             elif self.turn == "b" and row == 0:
-                                print(self.bughouse_hand_names[column - 1], self.bughouse_hand_amounts[0][column - 1])
+                                print(
+                                    self.bughouse_hand_names[column - 1],
+                                    self.bughouse_hand_amounts[0][column - 1],
+                                )
 
                         # Resignation
                         elif column == 6:
@@ -311,7 +381,7 @@ class Chessboard:
                             if self.turn == "b" and row == 0:
                                 print(f"{self.turn} resign")
                                 running = False
-                        
+
             # Update the display
             pygame.display.flip()
 
@@ -381,49 +451,80 @@ class Piece:
                         elif current_position[new_row][new_column].color != self.color:
                             moves.append((new_row, new_column))
 
-            # Castling. 
+            # Castling.
             if self.has_moved == False and strict:
-                    for dy, rook_column in [(-2, 0), (2, 7)]:
-                        if current_position[current_row][current_column + dy] is None and current_position[current_row][current_column + dy//2] is None:
-                            
-                            rook = current_position[current_row][rook_column]
-                            if rook is None:
-                                continue
-                            else:
-                                if rook.piece_name == "r" and rook.color == self.color and rook.has_moved == False:
-                                    
-                                    # Test if king under check
+                for dy, rook_column in [(-2, 0), (2, 7)]:
+                    if (
+                        current_position[current_row][current_column + dy] is None
+                        and current_position[current_row][current_column + dy // 2]
+                        is None
+                    ):
+                        rook = current_position[current_row][rook_column]
+                        if rook is None:
+                            continue
+                        else:
+                            if (
+                                rook.piece_name == "r"
+                                and rook.color == self.color
+                                and rook.has_moved == False
+                            ):
+                                # Test if king under check
 
-                                    all_pieces = []
-                                    for row in current_position:
-                                        all_pieces.extend([piece for piece in row if piece != None])
+                                all_pieces = []
+                                for row in current_position:
+                                    all_pieces.extend(
+                                        [piece for piece in row if piece != None]
+                                    )
 
-                                    under_check = False
-                                    for enemy_piece in all_pieces:
-                                        if enemy_piece.color != self.color:
-                                            if self.location in enemy_piece.show_legal_moves(current_position, None, strict=False):
-                                                print(f"under check by {enemy_piece.piece_name} at {enemy_piece.location}")
-                                                under_check = True
+                                under_check = False
+                                for enemy_piece in all_pieces:
+                                    if enemy_piece.color != self.color:
+                                        if (
+                                            self.location
+                                            in enemy_piece.show_legal_moves(
+                                                current_position, None, strict=False
+                                            )
+                                        ):
+                                            print(
+                                                f"under check by {enemy_piece.piece_name} at {enemy_piece.location}"
+                                            )
+                                            under_check = True
 
-                                    # Test if castling through check
-                                    new_column = current_column + dy//2
+                                # Test if castling through check
+                                new_column = current_column + dy // 2
 
-                                    king_location = (current_row, new_column)
+                                king_location = (current_row, new_column)
 
-                                    castling_through_check = False
-                                    for enemy_piece in all_pieces:
-                                        if enemy_piece.color != self.color:
-                                            if king_location in enemy_piece.show_legal_moves(current_position, None, strict=False):
-                                                print(f"trying to castle through check by {enemy_piece.piece_name} at {enemy_piece.location}")
-                                                castling_through_check = True
+                                castling_through_check = False
+                                for enemy_piece in all_pieces:
+                                    if enemy_piece.color != self.color:
+                                        if (
+                                            king_location
+                                            in enemy_piece.show_legal_moves(
+                                                current_position, None, strict=False
+                                            )
+                                        ):
+                                            print(
+                                                f"trying to castle through check by {enemy_piece.piece_name} at {enemy_piece.location}"
+                                            )
+                                            castling_through_check = True
 
-                                    if not castling_through_check and not under_check:
-                                        new_column = current_column + dy
-                                        moves.append((current_row, new_column))
+                                if not castling_through_check and not under_check:
+                                    new_column = current_column + dy
+                                    moves.append((current_row, new_column))
 
         # Queen moves
         elif self.piece_name == "q":
-            for dx, dy in [(-1, -1), (-1, 1), (1, -1), (1, 1), (-1, 0), (1, 0), (0, -1), (0, 1)]:
+            for dx, dy in [
+                (-1, -1),
+                (-1, 1),
+                (1, -1),
+                (1, 1),
+                (-1, 0),
+                (1, 0),
+                (0, -1),
+                (0, 1),
+            ]:
                 for i in range(1, 8):
                     new_row = current_row + i * dx
                     new_column = current_column + i * dy
@@ -440,16 +541,28 @@ class Piece:
 
         # Knight moves
         elif self.piece_name == "n":
-            knight_moves = [(1, 2), (1, -2), (-1, 2), (-1, -2), (2, 1), (2, -1), (-2, 1), (-2, -1)]
+            knight_moves = [
+                (1, 2),
+                (1, -2),
+                (-1, 2),
+                (-1, -2),
+                (2, 1),
+                (2, -1),
+                (-2, 1),
+                (-2, -1),
+            ]
             for dx, dy in knight_moves:
                 new_row = current_row + dx
                 new_column = current_column + dy
                 if 0 <= new_row <= 7 and 0 <= new_column <= 7:
-                    if current_position[new_row][new_column] is None or current_position[new_row][new_column].color != self.color:
+                    if (
+                        current_position[new_row][new_column] is None
+                        or current_position[new_row][new_column].color != self.color
+                    ):
                         moves.append((new_row, new_column))
 
         # Pawn moves
-        #TODO PROMOTION
+        # TODO PROMOTION
         elif self.piece_name == "p":
             if self.color == "w":
                 # Moves for white pawn
@@ -458,17 +571,28 @@ class Piece:
                     if current_position[new_row][current_column] is None:
                         moves.append((new_row, current_column))
 
-                    if current_row == 6 and current_position[new_row][current_column] is None and current_position[new_row-1][current_column] is None:
-                        moves.append((new_row-1, current_column))
+                    if (
+                        current_row == 6
+                        and current_position[new_row][current_column] is None
+                        and current_position[new_row - 1][current_column] is None
+                    ):
+                        moves.append((new_row - 1, current_column))
 
                 # Capturing moves
-                capture_moves = [(current_row - 1, current_column - 1), (current_row - 1, current_column + 1)]
+                capture_moves = [
+                    (current_row - 1, current_column - 1),
+                    (current_row - 1, current_column + 1),
+                ]
                 for move in capture_moves:
                     new_row, new_column = move
                     if 0 <= new_row <= 7 and 0 <= new_column <= 7:
-                        if current_position[new_row][new_column] is not None and current_position[new_row][new_column].color != self.color:
+                        if (
+                            current_position[new_row][new_column] is not None
+                            and current_position[new_row][new_column].color
+                            != self.color
+                        ):
                             moves.append(move)
-                
+
                 # En passant
                 if current_row == 3:
                     for enemy_column in [current_column - 1, current_column + 1]:
@@ -482,17 +606,28 @@ class Piece:
                     if current_position[new_row][current_column] is None:
                         moves.append((new_row, current_column))
 
-                    if current_row == 1 and current_position[new_row][current_column] is None and current_position[new_row+1][current_column] is None:
-                        moves.append((new_row+1, current_column))
+                    if (
+                        current_row == 1
+                        and current_position[new_row][current_column] is None
+                        and current_position[new_row + 1][current_column] is None
+                    ):
+                        moves.append((new_row + 1, current_column))
 
                 # Capturing moves
-                capture_moves = [(current_row + 1, current_column - 1), (current_row + 1, current_column + 1)]
+                capture_moves = [
+                    (current_row + 1, current_column - 1),
+                    (current_row + 1, current_column + 1),
+                ]
                 for move in capture_moves:
                     new_row, new_column = move
                     if 0 <= new_row <= 7 and 0 <= new_column <= 7:
-                        if current_position[new_row][new_column] is not None and current_position[new_row][new_column].color != self.color:
+                        if (
+                            current_position[new_row][new_column] is not None
+                            and current_position[new_row][new_column].color
+                            != self.color
+                        ):
                             moves.append(move)
-                
+
                 # En passant
                 if current_row == 4:
                     for enemy_column in [current_column - 1, current_column + 1]:
@@ -500,14 +635,11 @@ class Piece:
                             moves.append((new_row, enemy_column))
 
         illegal_moves = []
-        
+
         # test if move is illegal because king can be captured
         if strict:
-            
             for move in moves:
-
-
-                #make new move location
+                # make new move location
                 new_row, new_column = move
 
                 temp_position = copy.deepcopy(current_position)
@@ -515,7 +647,7 @@ class Piece:
                 temp_piece.location = (new_row, new_column)
                 temp_position[new_row][new_column] = temp_piece
                 temp_position[current_row][current_column] = None
-                #create new temporary position, with the possibly illegal move played
+                # create new temporary position, with the possibly illegal move played
 
                 temp_all_pieces = []
                 for row in temp_position:
@@ -527,8 +659,13 @@ class Piece:
                         king_location = some_piece.location
 
                 for enemy_piece in temp_all_pieces:
-                    if enemy_piece.color != self.color and enemy_piece.location != self.location:
-                        if king_location in enemy_piece.show_legal_moves(temp_position, None, strict=False):
+                    if (
+                        enemy_piece.color != self.color
+                        and enemy_piece.location != self.location
+                    ):
+                        if king_location in enemy_piece.show_legal_moves(
+                            temp_position, None, strict=False
+                        ):
                             illegal_moves.append(move)
 
         moves = [move for move in moves if move not in illegal_moves]

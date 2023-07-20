@@ -3,6 +3,8 @@ import os
 import copy
 
 
+
+
 class Chessboard:
     def fen_to_current_position(self, fen):
         """

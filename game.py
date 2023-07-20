@@ -9,7 +9,6 @@ class Chessboard:
         from given fen string create self.current_position as a 2d-list with piece objects.
         """
 
-
         self.current_position = [[None] * 8 for _ in range(8)]
         fen_parts = fen.split(" ")
 
@@ -120,7 +119,7 @@ class Chessboard:
                 pygame.draw.rect(
                     self.screen, color, (x, y, self.square_size, self.square_size)
                 )
-                
+
                 # Resign button
                 if column == 6:
                     piece_image = self.piece_images["resign"]
@@ -183,17 +182,17 @@ class Chessboard:
 
     def draw_promotion_menu(self):
         """
-        draw menu for promotion and update screen.
+        draw menu for promotion.
         """
 
-        # Row 1 for white 
+        # Row 1 for white
         if self.turn == "w":
             y = 1 * self.square_size
 
         # Row 10 for black
         else:
             y = 10 * self.square_size
-        
+
         # Draw the menu, swuare by square
         for column in range(2, 6):
             x = column * self.square_size
@@ -213,11 +212,11 @@ class Chessboard:
             piece_name = self.bughouse_hand_names[column - 2]
             piece_image = self.piece_images[self.turn + piece_name]
             self.screen.blit(piece_image, (x, y))
-            
-        pygame.display.flip()
 
     def display_legal_moves(self, moves):
-        # Loop to display the legal moves as grey circles on the chessboard
+        """
+        Display the legal moves as grey circles on the chessboard
+        """
         for move in moves:
             row, column = move
             x = column * self.square_size + self.square_size // 2
@@ -229,7 +228,7 @@ class Chessboard:
 
     def show_hand_piece_legal_moves(self, piece_name):
         """
-        show bughouse hand piece's legal moves
+        return bughouse hand piece's legal moves as (row, col)
         """
         moves = []
         rows = range(1, 7) if piece_name == "p" else range(8)
@@ -256,6 +255,7 @@ class Chessboard:
                 if some_piece.piece_name == "k" and some_piece.color == self.turn:
                     king_location = some_piece.location
 
+            # Check if own king can be captured next turn
             for enemy_piece in temp_all_pieces:
                 if enemy_piece.color != self.turn:
                     if king_location in enemy_piece.show_legal_moves(
@@ -266,11 +266,9 @@ class Chessboard:
         moves = [move for move in moves if move not in illegal_moves]
         return moves
 
-    def make_move(
-        self, target_location, en_passant=False, promotion=False, hand_piece=False
-    ):
+    def make_move(self, target_location, en_passant=False, promotion=False, hand_piece=False):
         """
-        make the move. if row is -1, it's a hand piece
+        make the move.
         change the previous move.
         change the turn
         """
@@ -313,21 +311,22 @@ class Chessboard:
         self.selected_piece = None
 
     def add_captured_to_hand(self, captured_piece):
-        hand_piece_index = self.bughouse_hand_names.index(
-                                        captured_piece
-                                    )
+        """add the given captured piece to player's hand
+        """
+
+        hand_piece_index = self.bughouse_hand_names.index(captured_piece)
         self.bughouse_hand_amounts[0 if self.turn == "b" else 1][hand_piece_index] += 1
 
     def run_game_loop(self):
         """
         main game loop. no arguments, no return,  just call this.
         """
-        running = True
+        self.running = True
 
-        while running:
+        while self.running:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
-                    running = False
+                    self.running = False
 
                 if event.type == pygame.MOUSEBUTTONDOWN:
                     if event.button == 1:  # Left mouse button
@@ -357,7 +356,6 @@ class Chessboard:
 
                         # If move is normal
                         elif 2 <= row <= 9:
-
                             # Get the piece object at the clicked position
                             chessboard_row = row - 2
                             chessboard_column = column
@@ -366,12 +364,16 @@ class Chessboard:
                             ]
 
                             # About to drop piece
-                            if self.holding_hand_piece and \
-                                (chessboard_row, chessboard_column) in legal_moves:
+                            if (
+                                self.holding_hand_piece
+                                and (chessboard_row, chessboard_column) in legal_moves
+                            ):
                                 hand_piece_index = self.bughouse_hand_names.index(
                                     self.holding_hand_piece
                                 )
-                                self.bughouse_hand_amounts[0 if self.turn == "b" else 1][hand_piece_index] -= 1
+                                self.bughouse_hand_amounts[
+                                    0 if self.turn == "b" else 1
+                                ][hand_piece_index] -= 1
                                 self.make_move(
                                     (chessboard_row, chessboard_column),
                                     hand_piece=self.holding_hand_piece,
@@ -433,7 +435,6 @@ class Chessboard:
                                             )
                                             self.draw_chessboard()
 
-
                             # Move own piece
                             elif self.selected_piece is not None:
                                 if (chessboard_row, chessboard_column) in legal_moves:
@@ -478,11 +479,10 @@ class Chessboard:
                                         self.draw_chessboard()
                                 else:
                                     self.selected_piece = None
-                        
+
                         # If selecting hand piece
                         elif 1 <= column <= 5 and row in [0, 11]:
-
-                            # For white 
+                            # For white
                             if self.turn == "w" and row == 11:
                                 if self.bughouse_hand_amounts[1][column - 1] > 0:
                                     legal_moves = self.show_hand_piece_legal_moves(
@@ -514,11 +514,11 @@ class Chessboard:
                         elif column == 6:
                             if self.turn == "w" and row == 11:
                                 print(f"{self.turn} resign")
-                                running = False
+                                self.running = False
                             if self.turn == "b" and row == 0:
                                 print(f"{self.turn} resign")
-                                running = False
-                        
+                                self.running = False
+
                         else:
                             self.selected_piece = None
                             self.holding_hand_piece = False
@@ -529,16 +529,18 @@ class Chessboard:
         # Quit Pygame
         pygame.quit()
 
-
 class Piece:
     def __init__(self, color, piece_name, row, column):
+        # Initialize values
         self.piece_name = piece_name
         self.color = color
         self.location = (row, column)
         self.has_moved = False
 
     def show_legal_moves(self, current_position, previous_move, strict=False):
-        # Implement the logic to show legal moves for the piece
+        """
+        return all legal moves for the piece as (row, col)
+        """
         moves = []
 
         # Get the current position of the piece

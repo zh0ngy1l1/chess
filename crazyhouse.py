@@ -54,6 +54,13 @@ class Chessboard:
         self.bughouse_hand_amounts = [[0, 0, 0, 0, 0], [0, 0, 0, 0, 0]]
         self.bughouse_hand_names = ["q", "r", "n", "b", "p"]
 
+        # Create the clock
+        self.clock = pygame.time.Clock()
+
+        # 5 minutes in deciseconds, for each player
+        time_limit = 5 * 60 * 10
+        self.time_left = [time_limit, time_limit]
+
         # Set the size of each square on the chessboard
         self.square_size = 64
         self.board_width = 8 * self.square_size
@@ -93,6 +100,49 @@ class Chessboard:
         fen = "rnbqkbnr/pppppppp/8/8/8/4n3/PPPPPPPP/R3K2Q"
         self.fen_to_current_position(starting_fen)
 
+    def update_time(self):
+        if self.turn == "w":
+            player_time = self.time_left[0]
+            enemy_time = self.time_left[1]
+            player_row = 10
+
+            self.time_left[0] -= 1
+        else:
+            player_time = self.time_left[1]
+            enemy_time = self.time_left[0]
+            player_row = 1
+
+            self.time_left[1] -= 1
+        
+        for row in [1, 10]:
+            x = 6 * self.square_size
+            y = row * self.square_size
+
+            if row == player_row:
+                player_deciseconds = player_time % 10
+                player_minutes, player_seconds = divmod(player_time//10, 60)
+            else:
+                player_deciseconds = enemy_time % 10
+                player_minutes, player_seconds = divmod(enemy_time//10, 60)
+
+            # Draw the background square
+            pygame.draw.rect(
+                self.screen, self.WHITE, (x, y, self.square_size, self.square_size)
+            )
+            pygame.draw.rect(
+                self.screen,
+                self.GREY,
+                (x, y, self.square_size, self.square_size),
+                width=4,
+            )
+
+            if player_minutes >= 1:
+                timer_text = self.font.render(f"{player_minutes:02d}:{player_seconds:02d}", True, self.BLACK)
+            else:
+                timer_text = self.font.render(f"{player_seconds:02d}:{player_deciseconds:02d}", True, self.BLACK)
+            self.screen.blit(timer_text, (x, y))
+
+        
     def draw_chessboard(self):
         """
         update board to match position
@@ -523,8 +573,13 @@ class Chessboard:
                             self.selected_piece = None
                             self.holding_hand_piece = False
 
+            # Update the time
+            self.clock.tick(10)
+            self.update_time()
+
             # Update the display
             pygame.display.flip()
+            
 
         # Quit Pygame
         pygame.quit()

@@ -89,8 +89,6 @@ class Chessboard:
         starting_fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR"
         fen = "rnbqkbnr/pppppppp/8/8/8/4n3/PPPPPPPP/R3K2Q"
         self.fen_to_current_position(starting_fen)
-
-
         
     def draw_chessboard(self):
         """
@@ -175,6 +173,36 @@ class Chessboard:
             else:
                 pygame.draw.circle(self.screen, self.GREY, (x, y), radius=12)
 
+    def detect_checkmate(self):
+        all_pieces = []
+        for row in self.current_position:
+            all_pieces.extend([piece for piece in row if piece != None])
+
+        # find king
+        for some_piece in all_pieces:
+            if some_piece.piece_name == "k" and some_piece.color == self.turn:
+                king_row, king_column = some_piece.location
+
+        king = self.current_position[king_row][king_column]
+        moves = king.show_legal_moves(self.current_position, strict=True)
+
+        if len(moves) == 0:
+            print("king can't move")
+
+        # for move in moves:
+        #         # make new move location
+        #         new_row, new_column = move
+
+        #         temp_position = copy.deepcopy(current_position)
+        #         temp_piece = temp_position[current_row][current_column]
+        #         temp_piece.location = (new_row, new_column)
+        #         temp_position[new_row][new_column] = temp_piece
+        #         temp_position[current_row][current_column] = None
+        #         # create new temporary position, with the possibly illegal move played
+
+                
+
+
     def make_move(self, target_location, en_passant=False, promotion=False):
         """
         make the move.
@@ -182,29 +210,63 @@ class Chessboard:
         change the turn
         """
 
+        print(f"moving {self.selected_piece.piece_name}")
+
         target_row, target_column = target_location
 
         original_row, original_column = self.selected_piece.location
+
+
         self.previous_move = [
             self.selected_piece.piece_name,
             (original_row, original_column),
             (target_row, target_column),
         ]
+        
         self.current_position[original_row][original_column] = None
 
-        if promotion:
-            self.current_position[target_row][target_column] = Piece(
-                self.turn, promotion, target_row, target_column
-            )
-            self.selected_piece.location = (target_row, target_column)
-            self.selected_piece.has_moved = True
-        else:
-            self.current_position[target_row][target_column] = self.selected_piece
-            self.selected_piece.location = (target_row, target_column)
-            self.selected_piece.has_moved = True
+        # castling
+        if self.selected_piece.piece_name == "k" and \
+            (target_column - original_column > 1 or target_column - original_column < - 1):
+                # get castled rook
+                rook_column, rook_target_column = (0, 3) if target_column == 2 else (7, 5)
 
-        if en_passant:
-            self.current_position[original_row][target_column] = None
+                self.previous_move = [
+                    self.selected_piece.piece_name,
+                    (original_row, original_column),
+                    (original_row, target_column),
+                    (original_row, rook_column),
+                    (original_row, rook_target_column)
+                ]
+
+                rook = self.current_position[original_row][rook_column]
+                self.current_position[original_row][rook_column] = None
+
+                self.current_position[original_row][rook_target_column] = rook
+                rook.location = (target_row, rook_target_column)
+
+                self.current_position[target_row][target_column] = self.selected_piece
+                self.selected_piece.location = (target_row, target_column)
+
+                self.selected_piece.has_moved = True
+                rook.has_moved = True
+
+        else:
+            if promotion:
+                self.current_position[target_row][target_column] = Piece(
+                    self.turn, promotion, target_row, target_column
+                )
+                self.selected_piece.location = (target_row, target_column)
+                self.selected_piece.has_moved = True
+
+            # normal move
+            else:
+                self.current_position[target_row][target_column] = self.selected_piece
+                self.selected_piece.location = (target_row, target_column)
+                self.selected_piece.has_moved = True
+
+                if en_passant:
+                    self.current_position[original_row][target_column] = None
 
         self.turn = "w" if self.turn == "b" else "b"
         self.selected_piece = None
@@ -245,6 +307,9 @@ class Chessboard:
                                 self.about_to_promote = False
                             else:
                                 self.draw_promotion_menu()
+
+                        # check if we mated
+                        self.detect_checkmate()
 
                         # Get the piece object at the clicked position
                         piece = self.current_position[row][column]
@@ -348,6 +413,8 @@ class Chessboard:
         # Quit Pygame
         pygame.quit()
 
+
+
 class Piece:
     def __init__(self, color, piece_name, row, column):
         # Initialize values
@@ -356,7 +423,7 @@ class Piece:
         self.location = (row, column)
         self.has_moved = False
 
-    def show_legal_moves(self, current_position, previous_move, strict=False):
+    def show_legal_moves(self, current_position, previous_move=None, strict=False):
         """
         return all legal moves for the piece as (row, col)
         """
@@ -631,7 +698,6 @@ class Piece:
 
         moves = [move for move in moves if move not in illegal_moves]
         return moves
-
 
 # Create an instance of the Chessboard class
 chessboard = Chessboard()

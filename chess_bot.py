@@ -185,22 +185,52 @@ class Chessboard:
 
         king = self.current_position[king_row][king_column]
         moves = king.show_legal_moves(self.current_position, strict=True)
-
+        
+        # Checkmate detection
         if len(moves) == 0:
             print("king can't move")
+            temp_position = copy.deepcopy(self.current_position)
 
-        # for move in moves:
-        #         # make new move location
-        #         new_row, new_column = move
+            #create temporary own pieces and enemy pieces lists
+            temp_own_pieces = []
+            temp_enemy_pieces = []
+            for row in temp_position:
+                for some_piece in row:
+                    if some_piece != None:
+                        if some_piece.color == self.turn:
+                            temp_own_pieces.append(some_piece)
+                        else:
+                            temp_enemy_pieces.append(some_piece)
+                    else:
+                        pass
+            
 
-        #         temp_position = copy.deepcopy(current_position)
-        #         temp_piece = temp_position[current_row][current_column]
-        #         temp_piece.location = (new_row, new_column)
-        #         temp_position[new_row][new_column] = temp_piece
-        #         temp_position[current_row][current_column] = None
-        #         # create new temporary position, with the possibly illegal move played
+            # find all legal moves
+            all_moves = []
+            for some_piece in temp_own_pieces:
+                some_piece_moves = some_piece.show_legal_moves(
+                    temp_position, self.previous_move, strict=True
+                )
+                print(some_piece.piece_name, some_piece_moves)
+                all_moves.extend(some_piece_moves)
 
-                
+            if len(all_moves) == 0:
+                checkmate = False
+
+                # detect checkmate
+                for enemy_piece in temp_enemy_pieces:
+                    if (
+                        enemy_piece.color != self.turn
+                    ):
+                        if (king_row, king_column) in enemy_piece.show_legal_moves(
+                            temp_position, None, strict=False
+                        ):
+                            checkmate = True
+
+                if checkmate:            
+                    print(f"CHECKMATE! {'WHITE' if self.turn == 'b' else 'BLACK'} WINS!")
+                else:
+                    print("STALEMATE! IT'S A DRAW!")
 
 
     def make_move(self, target_location, en_passant=False, promotion=False):
@@ -210,7 +240,7 @@ class Chessboard:
         change the turn
         """
 
-        print(f"moving {self.selected_piece.piece_name}")
+        print(f"moving {self.selected_piece.piece_name} from {self.selected_piece.location} to {target_location}")
 
         target_row, target_column = target_location
 
@@ -269,6 +299,7 @@ class Chessboard:
                     self.current_position[original_row][target_column] = None
 
         self.turn = "w" if self.turn == "b" else "b"
+        self.detect_checkmate()
         self.selected_piece = None
 
     def run_game_loop(self):
@@ -300,7 +331,7 @@ class Chessboard:
                             if row == menu_row and 2 <= column <= 5:
                                 # use previous row/column and promote
                                 self.make_move(
-                                    (row, column),
+                                    self.previous_move[-1],
                                     promotion=self.promotion_menu_names[column - 2],
                                 )
                                 self.draw_chessboard()
@@ -308,8 +339,6 @@ class Chessboard:
                             else:
                                 self.draw_promotion_menu()
 
-                        # check if we mated
-                        self.detect_checkmate()
 
                         # Get the piece object at the clicked position
                         piece = self.current_position[row][column]
@@ -342,14 +371,15 @@ class Chessboard:
                                         and row == promotion_row
                                     ):
                                         print(
-                                            f"promotion. {self.selected_piece.piece_name} at {self.selected_piece.location} captures {piece.piece_name} on {piece.location} and promotes."
+                                            f"promotion. {self.selected_piece.piece_name} at {self.selected_piece.location} captures {piece.piece_name} on {row, column} and promotes."
                                         )
                                         self.draw_promotion_menu()
                                         self.about_to_promote = True
+                                        self.previous_move = [self.selected_piece.piece_name, (self.selected_piece.location), (row, column)]
 
                                     else:
                                         print(
-                                            f"play move. {self.selected_piece.piece_name} at {self.selected_piece.location} captures {piece.piece_name} on {piece.location}."
+                                            f"play move. {self.selected_piece.piece_name} at {self.selected_piece.location} captures {piece.piece_name} on {row, column}."
                                         )
 
                                         # Play the move on the board
@@ -388,6 +418,7 @@ class Chessboard:
                                     )
                                     self.draw_promotion_menu()
                                     self.about_to_promote = True
+                                    self.previous_move = [self.selected_piece.piece_name, (self.selected_piece.location), (row, column)]
 
                                 else:
                                     print(
